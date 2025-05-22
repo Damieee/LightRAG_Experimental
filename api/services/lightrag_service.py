@@ -4,6 +4,8 @@ from lightrag.lightrag import LightRAG
 from lightrag.llm.openai import gpt_4o_mini_complete, openai_embed
 from lightrag.kg.shared_storage import initialize_pipeline_status
 
+# https://ai.pydantic.dev/api/agent/#pydantic_ai.agent.Agent
+
 WORKING_DIR = "./pydantic-docs"
 
 async def get_lightrag():
