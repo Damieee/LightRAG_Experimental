@@ -15,5 +15,19 @@ async def get_lightrag():
         llm_model_func=gpt_4o_mini_complete
     )
     await rag.initialize_storages()
-    await initialize_pipeline_status()
     return rag
+
+async def insert_document(content: str):
+    rag = await get_lightrag()
+    await initialize_pipeline_status()
+    return rag.insert(content)
+
+async def update_document(doc_id: str, content: str):
+    rag = await get_lightrag()
+    await initialize_pipeline_status()
+    return rag.update(doc_id, content)
+
+async def remove_document(doc_id: str):
+    rag = await get_lightrag()
+    await initialize_pipeline_status()
+    return rag.remove(doc_id)
