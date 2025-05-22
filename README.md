@@ -2,7 +2,18 @@
 
 A FastAPI-based RAG (Retrieval-Augmented Generation) API service that provides chat functionality and document management with error handling.
 
-## Prerequisites
+## Why LightRAG?
+
+LightRAG combines the best of both worlds - the speed and efficiency of naive RAG systems with the sophisticated relationship mapping of graph-based RAG approaches. It offers:
+
+- **Lightweight**: Minimal dependencies and efficient resource usage
+- **Fast Processing**: Optimized document chunking and retrieval
+- **Hybrid Approach**: Combines traditional chunking with relationship mapping
+- **Flexible Architecture**: Easy to integrate and extend
+
+For detailed information, visit the [LightRAG Documentation](https://github.com/HKUDS/LightRAG).
+
+Prerequisites
 
 - Python 3.8+
 - OpenAI API key
