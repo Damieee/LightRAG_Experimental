@@ -19,10 +19,22 @@ async def get_lightrag():
     await rag.initialize_storages()
     return rag
 
+async def get_lightrag_for_insertion():
+    if not os.path.exists(WORKING_DIR):
+        os.mkdir(WORKING_DIR)
+    rag = LightRAG(
+        working_dir=WORKING_DIR,
+        embedding_func=openai_embed,
+        llm_model_func=gpt_4o_mini_complete
+    )
+    await rag.initialize_storages()
+    await initialize_pipeline_status()
+    return rag
+
 async def insert_document(content: str):
     try:
-        rag = await get_lightrag()
-        return await rag.insert(content)
+        rag = await get_lightrag_for_insertion()
+        return await rag.ainsert(content)
     except Exception as e:
         raise Exception(f"Failed to insert document: {str(e)}")
 
