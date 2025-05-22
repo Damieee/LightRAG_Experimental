@@ -20,6 +20,6 @@ async def agent_response(user_input, message_history):
     try:
         deps = await get_agent_deps()
         result = await agent.run(user_input, deps=deps, message_history=message_history)
-        return await result.output()
+        return result
     except Exception as e:
         raise Exception(f"Error in agent_response: {str(e)}")
