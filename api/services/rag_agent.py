@@ -11,7 +11,7 @@ from pydantic_ai import RunContext
 from pydantic_ai.agent import Agent
 from openai import AsyncOpenAI
 
-from lightrag import LightRAG, QueryParam
+from lightrag.lightrag import LightRAG, QueryParam
 from lightrag.llm.openai import gpt_4o_mini_complete, openai_embed
 from lightrag.kg.shared_storage import initialize_pipeline_status
 
@@ -52,8 +52,8 @@ class RAGDeps:
 agent = Agent(
     'openai:gpt-4o-mini',
     deps_type=RAGDeps,
-    system_prompt="You are a helpful assistant that answers questions about Pydantic AI based on the provided documentation. "
-                  "Use the retrieve tool to get relevant information from the Pydantic AI documentation before answering. "
+    system_prompt="You are a helpful assistant that answers questions about Machine Learning based on the provided documentation. "
+                  "Use the retrieve tool to get relevant information from the Machine Learning documentation before answering. "
                   "If the documentation doesn't contain the answer, clearly state that the information isn't available "
                   "in the current documentation and provide your best general knowledge response."
 )
@@ -71,12 +71,12 @@ async def retrieve(context: RunContext[RAGDeps], search_query: str) -> str:
         Formatted context information from the retrieved documents.
     """
     return await context.deps.lightrag.aquery(
-        search_query, param=QueryParam(mode="mix")
+        search_query, param=QueryParam(mode="local")
     )
 
 
 async def run_rag_agent(question: str,) -> str:
-    """Run the RAG agent to answer a question about Pydantic AI.
+    """Run the RAG agent to answer a question about Machine Learning.
     
     Args:
         question: The question to answer.

@@ -1,6 +1,6 @@
 import os
 import asyncio
-from lightrag import LightRAG
+from lightrag.lightrag import LightRAG
 from lightrag.llm.openai import gpt_4o_mini_complete, openai_embed
 from lightrag.kg.shared_storage import initialize_pipeline_status
 
@@ -18,16 +18,22 @@ async def get_lightrag():
     return rag
 
 async def insert_document(content: str):
-    rag = await get_lightrag()
-    await initialize_pipeline_status()
-    return rag.insert(content)
+    try:
+        rag = await get_lightrag()
+        return await rag.insert(content)
+    except Exception as e:
+        raise Exception(f"Failed to insert document: {str(e)}")
 
 async def update_document(doc_id: str, content: str):
-    rag = await get_lightrag()
-    await initialize_pipeline_status()
-    return rag.update(doc_id, content)
+    try:
+        rag = await get_lightrag()
+        return await rag.update(doc_id, content)
+    except Exception as e:
+        raise Exception(f"Failed to update document {doc_id}: {str(e)}")
 
 async def remove_document(doc_id: str):
-    rag = await get_lightrag()
-    await initialize_pipeline_status()
-    return rag.remove(doc_id)
+    try:
+        rag = await get_lightrag()
+        return await rag.remove(doc_id)
+    except Exception as e:
+        raise Exception(f"Failed to remove document {doc_id}: {str(e)}")

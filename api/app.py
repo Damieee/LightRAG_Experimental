@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse
-from schemas.chat import ChatRequest
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import StreamingResponse, JSONResponse
+from schemas.chat import ChatRequest, ErrorResponse
 from services.pydantic_ai_service import stream_agent_response, agent_response
 from schemas.docs import InsertDocRequest, UpdateDocRequest, RemoveDocRequest
 from services.lightrag_service import insert_document, update_document, remove_document
@@ -19,37 +19,61 @@ app.add_middleware(
     )
 
 @app.post("/chat/stream")
-async def chat_stream(request: Request):
-    data = await request.json()
-    user_input = data.get("user_input")
-    message_history = data.get("message_history", [])
-    async def event_stream():
-        async for chunk in stream_agent_response(user_input, message_history):
-            yield chunk
-    return StreamingResponse(event_stream(), media_type="text/plain")
+async def chat_stream(chat_request: ChatRequest):
+    try:
+        async def event_stream():
+            async for chunk in stream_agent_response(chat_request.user_input, chat_request.message_history):
+                yield chunk
+        return StreamingResponse(event_stream(), media_type="text/plain")
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ErrorResponse(error="Streaming Error", details=str(e)).model_dump()
+        )
 
 @app.post("/chat")
-async def chat(request: Request):
-    data = await request.json()
-    user_input = data.get("user_input")
-    message_history = data.get("message_history", [])
-    response = await agent_response(user_input, message_history)
-    return {"response": response}
+async def chat(chat_request: ChatRequest):
+    try:
+        response = await agent_response(chat_request.user_input, chat_request.message_history)
+        return {"response": response}
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ErrorResponse(error="Chat Error", details=str(e)).model_dump()
+        )
 
 @app.post("/docs/insert")
 async def docs_insert(req: InsertDocRequest):
-    doc_id = await insert_document(req.content)
-    return {"doc_id": doc_id}
+    try:
+        doc_id = await insert_document(req.content)
+        return {"doc_id": doc_id}
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ErrorResponse(error="Document Insert Error", details=str(e)).model_dump()
+        )
 
 @app.post("/docs/update")
 async def docs_update(req: UpdateDocRequest):
-    result = await update_document(req.doc_id, req.content)
-    return {"result": result}
+    try:
+        result = await update_document(req.doc_id, req.content)
+        return {"result": result}
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ErrorResponse(error="Document Update Error", details=str(e)).model_dump()
+        )
 
 @app.post("/docs/remove")
 async def docs_remove(req: RemoveDocRequest):
-    result = await remove_document(req.doc_id)
-    return {"result": result}
+    try:
+        result = await remove_document(req.doc_id)
+        return {"result": result}
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content=ErrorResponse(error="Document Remove Error", details=str(e)).model_dump()
+        )
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
