@@ -4,9 +4,9 @@ from typing import List, AsyncIterator, Optional
 from datetime import datetime
 from pydantic_ai.models import (
     Model, ModelMessage, ModelSettings, ModelRequestParameters,
-    ModelResponse, StreamedResponse, check_allow_model_requests
+    ModelResponse, StreamedResponse, check_allow_model_requests, Usage
 )
-from pydantic_ai.messages import SystemPromptPart, UserPromptPart
+from pydantic_ai.messages import SystemPromptPart, UserPromptPart, TextPart
 import dotenv
 
 # Load environment variables from .env file
@@ -64,12 +64,26 @@ class MyOpenAICompatibleModel(Model):
             data = resp.json()
             
         print(f"Response from OpenAI API: {data}")  # Debugging line to check response
-        # Create ModelResponse from API response
+        # Create response part
         response_content = data["choices"][0]["message"]["content"]
+        response_part = TextPart(content=response_content)
+        
+        # Create usage info
+        usage_data = data["usage"]
+        usage = Usage(
+            request_tokens=usage_data["prompt_tokens"],
+            response_tokens=usage_data["completion_tokens"],
+            total_tokens=usage_data["total_tokens"]
+        )
+        
         return ModelResponse(
-            content=response_content,
-            raw=data,  # Store full response data
-            model_name=self.model_name
+            parts=[response_part],
+            usage=usage,
+            model_name=self.model_name,
+            vendor_details={
+                "finish_reason": data["choices"][0]["finish_reason"]
+            },
+            vendor_id=data["id"]
         )
 
     async def request_stream(
