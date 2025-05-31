@@ -2,7 +2,11 @@ import os
 import httpx
 from typing import List, AsyncIterator, Optional
 from datetime import datetime
-from pydantic_ai.models import Model, ModelMessage, ModelSettings, ModelRequestParameters, ModelResponse, StreamedResponse, check_allow_model_requests
+from pydantic_ai.models import (
+    Model, ModelMessage, ModelSettings, ModelRequestParameters,
+    ModelResponse, StreamedResponse, check_allow_model_requests
+)
+from pydantic_ai.messages import SystemPromptPart, UserPromptPart
 import dotenv
 
 # Load environment variables from .env file
@@ -19,7 +23,20 @@ class MyOpenAICompatibleModel(Model):
 
     @property
     def base_url(self) -> Optional[str]:
-        return os.getenv("LLM_BINDING_HOST", "http://localhost:8000")
+        return os.getenv("LLM_BINDING_HOST_PYDANTIC", "http://localhost:8000")
+
+    def convert_message(self, m: ModelMessage):
+        # Handle ModelRequest type
+        if not hasattr(m, 'parts'):
+            return {"role": "user", "content": m.user_text_prompt}
+            
+        # Extract content from parts
+        if len(m.parts) > 0:
+            if isinstance(m.parts[0], SystemPromptPart):
+                return {"role": "system", "content": m.parts[0].content}
+            else:
+                return {"role": "user", "content": m.parts[-1].content}
+        return {"role": "user", "content": ""}
 
     async def request(
         self,
@@ -28,10 +45,10 @@ class MyOpenAICompatibleModel(Model):
         model_request_parameters: ModelRequestParameters,
     ) -> ModelResponse:
         check_allow_model_requests()
-        # Compose the payload as OpenAI expects
+        formatted_messages = [self.convert_message(m) for m in messages]
         payload = {
             "model": self.model_name,
-            "messages": [m.dict() for m in messages],
+            "messages": formatted_messages,
             "stream": False,
         }
         api_key = os.getenv("LLM_BINDING_API_KEY")
@@ -45,8 +62,15 @@ class MyOpenAICompatibleModel(Model):
             )
             resp.raise_for_status()
             data = resp.json()
-        # You may need to adapt this to your API's response format
-        return ModelResponse.from_openai(data)
+            
+        print(f"Response from OpenAI API: {data}")  # Debugging line to check response
+        # Create ModelResponse from API response
+        response_content = data["choices"][0]["message"]["content"]
+        return ModelResponse(
+            content=response_content,
+            raw=data,  # Store full response data
+            model_name=self.model_name
+        )
 
     async def request_stream(
         self,
@@ -55,9 +79,10 @@ class MyOpenAICompatibleModel(Model):
         model_request_parameters: ModelRequestParameters,
     ) -> AsyncIterator[StreamedResponse]:
         check_allow_model_requests()
+        formatted_messages = [self.convert_message(m) for m in messages]
         payload = {
             "model": self.model_name,
-            "messages": [m.dict() for m in messages],
+            "messages": formatted_messages,
             "stream": True,
         }
         api_key = os.getenv("LLM_BINDING_API_KEY")
