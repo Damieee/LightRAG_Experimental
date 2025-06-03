@@ -3,18 +3,12 @@
 import os
 import sys
 import argparse
-from dataclasses import dataclass
 import asyncio
+from dataclasses import dataclass
 
 import dotenv
-from pydantic_ai import RunContext
-from pydantic_ai.agent import Agent
-from openai import AsyncOpenAI
-from .my_openai_compatible_model import MyOpenAICompatibleModel
-
-
 from lightrag.lightrag import LightRAG, QueryParam
-from lightrag.llm.openai import openai_complete_if_cache, openai_embed
+from lightrag.llm.openai import openai_complete_if_cache, openai_embed, gpt_4o_mini_complete
 from lightrag.utils import EmbeddingFunc
 from lightrag.kg.shared_storage import initialize_pipeline_status
 
@@ -49,90 +43,64 @@ WORKING_DIR = "./pydantic-docs"
 if not os.path.exists(WORKING_DIR):
     os.mkdir(WORKING_DIR)
 
-# Check for OpenAI API key
+# Check for OpenAI API key (optional, only warn)
 if not os.getenv("OPENAI_API_KEY"):
-    print("Error: OPENAI_API_KEY environment variable not set.")
-    print("Please create a .env file with your OpenAI API key or set it in your environment.")
-    sys.exit(1)
-
+    print("Warning: OPENAI_API_KEY environment variable not set. Custom LLM may require its own key.")
 
 async def initialize_rag():
     rag = LightRAG(
         working_dir=WORKING_DIR,
         embedding_func=openai_embed,
-        llm_model_func=custom_llm_model_func
+        llm_model_func=gpt_4o_mini_complete
+        # llm_model_func=custom_llm_model_func,
     )
-
     await rag.initialize_storages()
-
     return rag
-
 
 @dataclass
 class RAGDeps:
-    """Dependencies for the RAG agent."""
     lightrag: LightRAG
 
-
-# Create the Pydantic AI agent
-agent = Agent(
-    model=MyOpenAICompatibleModel(),
-    deps_type=RAGDeps,
-    system_prompt="You are a helpful assistant that answers questions about Machine Learning based on the provided documentation. "
-                  "Use the retrieve tool to get relevant information from the Machine Learning documentation before answering. "
-                  "If the documentation doesn't contain the answer, clearly state that the information isn't available "
-                  "in the current documentation and provide your best general knowledge response."
-)
-
-
-@agent.tool
-async def retrieve(context: RunContext[RAGDeps], search_query: str) -> str:
-    """Retrieve relevant documents from ChromaDB based on a search query.
-    
-    Args:
-        context: The run context containing dependencies.
-        search_query: The search query to find relevant documents.
-        
-    Returns:
-        Formatted context information from the retrieved documents.
+async def stream_rag_answer(question: str, stream: bool = True):
     """
-    return await context.deps.lightrag.aquery(
-        search_query, param=QueryParam(mode="local")
-    )
-
-
-async def run_rag_agent(question: str,) -> str:
-    """Run the RAG agent to answer a question about Machine Learning.
-    
-    Args:
-        question: The question to answer.
-        
-    Returns:
-        The agent's response.
+    Stream the answer to a question using LightRAG.
+    If streaming is not supported, yield the full answer at once.
     """
-    # Create dependencies
-    lightrag = await initialize_rag()
-    deps = RAGDeps(lightrag=lightrag)
-    
-    # Run the agent
-    result = await agent.run(question, deps=deps)
-    
-    return result.data
+    rag = await initialize_rag()
+    param = QueryParam(mode="local", history_turns=5, only_need_context=False, stream=stream)
+    # Try streaming, fallback to non-streaming
+    if hasattr(rag, "aquery_stream"):
+        async for chunk in rag.aquery_stream(question, param=param):
+            yield chunk
+    else:
+        # Fallback: yield the full answer at once
+        result = await rag.aquery(question, param=param)
+        yield result
 
+async def run_rag_agent(question: str) -> str:
+    """
+    Get the full answer to a question using LightRAG (non-streaming).
+    """
+    rag = await initialize_rag()
+    param = QueryParam(mode="local", history_turns=5, only_need_context=False)
+    result = await rag.aquery(question, param=param)
+    return result
 
 def main():
-    """Main function to parse arguments and run the RAG agent."""
-    parser = argparse.ArgumentParser(description="Run a Pydantic AI agent with RAG using ChromaDB")
-    parser.add_argument("--question", help="The question to answer about Pydantic AI")
-    
+    parser = argparse.ArgumentParser(description="Run a LightRAG agent")
+    parser.add_argument("--question", help="The question to answer")
+    parser.add_argument("--stream", action="store_true", help="Stream the response")
     args = parser.parse_args()
-    
-    # Run the agent
-    response = asyncio.run(run_rag_agent(args.question))
-    
-    print("\nResponse:")
-    print(response)
 
+    if args.stream:
+        async def run_stream():
+            async for chunk in stream_rag_answer(args.question, stream=True):
+                print(chunk, end="", flush=True)
+        asyncio.run(run_stream())
+    else:
+        response = asyncio.run(run_rag_agent(args.question))
+        print("\nResponse:")
+        print(response)
 
 if __name__ == "__main__":
     main()
