@@ -21,18 +21,21 @@ app.add_middleware(
 
 # Create a single database instance for the application
 db = None
+db_cm = None  # <-- Add this line
 
 @app.on_event("startup")
 async def startup_db():
-    global db
+    global db, db_cm
     db_cm = Database.connect()
     db = await db_cm.__aenter__()
 
 @app.on_event("shutdown")
 async def shutdown_db():
-    global db
-    if db:
-        await db.close()
+    global db, db_cm
+    if db_cm:
+        await db_cm.__aexit__(None, None, None)
+        db_cm = None
+        db = None
 
 @app.post("/chat/stream")
 async def chat_stream(chat_request: ChatRequest) -> StreamingResponse:
