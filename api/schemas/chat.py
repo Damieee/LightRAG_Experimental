@@ -1,5 +1,7 @@
 from pydantic import BaseModel
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Literal
+from typing_extensions import LiteralString, ParamSpec, TypedDict
+
 
 class MessagePart(BaseModel):
     part_kind: str
@@ -62,3 +64,10 @@ class ErrorResponse(BaseModel):
             }
         }
     }
+
+class ChatMessage(TypedDict):
+    """Format of messages sent to the browser."""
+
+    role: Literal['user', 'model']
+    timestamp: str
+    content: str
