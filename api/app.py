@@ -61,7 +61,10 @@ async def chat_stream(chat_request: ChatRequest) -> StreamingResponse:
 @app.post("/chat")
 async def chat(chat_request: ChatRequest):
     try:
-        response = await agent_response(chat_request.user_input, chat_request.message_history)
+        # Retrieve message history from the database for memory
+        global db
+        messages = await db.get_messages()
+        response = await agent_response(chat_request.user_input, messages)
         return {"response": response}
     except Exception as e:
         return JSONResponse(
