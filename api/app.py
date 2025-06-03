@@ -25,13 +25,14 @@ db = None
 @app.on_event("startup")
 async def startup_db():
     global db
-    db = Database.connect().__aenter__()
+    db_cm = Database.connect()
+    db = await db_cm.__aenter__()
 
 @app.on_event("shutdown")
 async def shutdown_db():
     global db
     if db:
-        await db.__aexit__(None, None, None)
+        await db.close()
 
 @app.post("/chat/stream")
 async def chat_stream(chat_request: ChatRequest) -> StreamingResponse:
