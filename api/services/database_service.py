@@ -25,7 +25,11 @@ class Database:
         loop = asyncio.get_event_loop()
         executor = ThreadPoolExecutor(max_workers=1)
         con = await loop.run_in_executor(executor, cls._connect, file)
-        return cls(con, loop, executor)
+        db = cls(con, loop, executor)
+        try:
+            yield db
+        finally:
+            await db.close()
 
     async def close(self):
         await self._asyncify(self.con.close)
