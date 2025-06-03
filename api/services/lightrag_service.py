@@ -1,7 +1,7 @@
 import os
 import asyncio
 from lightrag.lightrag import LightRAG
-from lightrag.llm.openai import openai_complete_if_cache, openai_embed
+from lightrag.llm.openai import openai_complete_if_cache, openai_embed, gpt_4o_mini_complete
 from lightrag.utils import EmbeddingFunc
 from lightrag.kg.shared_storage import initialize_pipeline_status
 
@@ -36,7 +36,8 @@ async def get_lightrag():
     rag = LightRAG(
         working_dir=WORKING_DIR,
         embedding_func=openai_embed,
-        llm_model_func=custom_llm_model_func
+        # llm_model_func=custom_llm_model_func
+        llm_model_func=gpt_4o_mini_complete
     )
     await rag.initialize_storages()
     return rag
@@ -47,7 +48,8 @@ async def get_lightrag_for_insertion():
     rag = LightRAG(
         working_dir=WORKING_DIR,
         embedding_func=openai_embed,
-        llm_model_func=custom_llm_model_func
+        # llm_model_func=custom_llm_model_func
+        llm_model_func=gpt_4o_mini_complete
     )
     await rag.initialize_storages()
     await initialize_pipeline_status()
